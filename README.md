@@ -130,8 +130,47 @@ Either way, it starts, joins `cloud-avro-consumer-group`, and (since
 in `cloud-avro-orders-topic`, then keeps running and prints new messages
 live as `cloud-avro-producer` sends them.
 
+## Running it as a Docker container
+
+Same multi-stage pattern as `cloud-avro-producer`'s `Dockerfile` — a
+`maven:3.9-eclipse-temurin-17` stage builds the jar, a slim
+`eclipse-temurin:17-jre` stage runs just that jar. No `EXPOSE` directive
+here, unlike the producer's `Dockerfile` — this app has no web server
+listening on any port; the listener container itself is what keeps it
+running.
+
+```bash
+docker build -t cloud-avro-consumer .
+docker run --env-file .env cloud-avro-consumer
+```
+
+Verified: the container joins the same consumer group and prints messages
+identically to the local run — including a message sent live from a
+*separately running* `cloud-avro-producer` container, proving both
+containers reach Confluent Cloud independently and correctly.
+
+`.dockerignore` excludes `target/`, `.idea/`, `.git/`, and `.env` from the
+build context.
+
+## Running both together with Docker Compose
+
+A `docker-compose.yml` lives at the parent folder
+(`~/Documents/Learnings/Kafka/docker-compose.yml`), not in this repo —
+see [`cloud-avro-producer`](https://github.com/DuminduChamal/cloud-avro-producer)'s
+README for its content. From that parent folder:
+
+```bash
+docker compose up --build
+docker compose down
+```
+
+Verified end-to-end: a message sent to the composed producer showed up in
+the composed consumer's log within a couple of seconds, both interleaved
+in Compose's single combined output stream.
+
 ## What's next
 
-- Containerizing this app with a multi-stage `Dockerfile`, same pattern as
-  planned for the producer
-- Docker Compose to run both together with one command
+Nothing planned currently — this pair covers local run, Docker container,
+and Docker Compose orchestration, on top of the Confluent Cloud + Avro +
+Schema Registry fundamentals already built out across the other four
+projects in this series.
